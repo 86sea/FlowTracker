@@ -1,0 +1,40 @@
+<h1>Add Task</h1>
+<form method="post">
+    {% csrf_token %}
+    <label for="name">Task Name:</label><br>
+    <input type="text" id="task_name" name="task_name"><br>
+    <input type="submit" value="Add Task">
+</form>
+<h1>Start Task</h1>
+<form method="post">
+    {% csrf_token %}
+    <label for="task_name">Task Name:</label>
+    <select id="task_name" name="task_name">
+        {% for task_name in task_names %}
+        <option value="{{ task_name.name }}">{{ task_name.name }}</option>
+        {% endfor %}
+    </select><br>
+<label for="task_length">Task Length:</label><br>
+<div id="task_length">
+    <label>
+        <input type="radio" name="task_length" value="15">
+        15
+    </label>
+    <label>
+        <input type="radio" name="task_length" value="25" checked>
+        25
+    </label>
+    <label>
+        <input type="radio" name="task_length" value="45">
+        45
+    </label>
+</div>
+<br>
+    <input type="submit" value="Start Task">
+</form>
+<h1>History: </h1> <ul> {% for task in tasks %}
+    <li>
+        <p>{{ task.name.name }} Length: {{ task.length }} minutes Date: {{ task.date }}</p>
+    </li>
+    {% endfor %}
+</ul>
