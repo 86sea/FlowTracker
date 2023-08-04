@@ -1,0 +1,9 @@
+<h1>Tasks</h1>
+<ul>
+    {% for task in tasks %}
+    <li>
+        <h2>{{ task.name.name }}</h2>
+        <p>Length: {{ task.length }} minutes</p>
+    </li>
+    {% endfor %}
+</ul>
