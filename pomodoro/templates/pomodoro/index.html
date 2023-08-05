@@ -1,9 +1,16 @@
+{% load static %}
+<!DOCTYPE html>
+<html data-theme="dark">
+<head>
+    <link rel="stylesheet" href="{% static 'output.css' %}">
+</head>
+<body>
 <h1>Add Task</h1>
 <form method="post">
     {% csrf_token %}
     <label for="name">Task Name:</label><br>
-    <input type="text" id="task_name" name="task_name"><br>
-    <input type="submit" value="Add Task">
+    <input class="input input-bordered input-secondary w-full max-w-xs" type="text" id="task_name" name="task_name"><br>
+    <input class="btn" type="submit" value="Add Task">
 </form>
 <h1>Start Task</h1>
 <form method="post">
@@ -17,15 +24,15 @@
 <label for="task_length">Task Length:</label><br>
 <div id="task_length">
     <label>
-        <input type="radio" name="task_length" value="15">
+        <input type="radio" class="radio radio-primary name="task_length" value="15">
         15
     </label>
     <label>
-        <input type="radio" name="task_length" value="25" checked>
+        <input type="radio" class="radio radio-primary name="task_length" value="25" checked>
         25
     </label>
     <label>
-        <input type="radio" name="task_length" value="45">
+        <input type="radio" class="radio radio-primary name="task_length" value="45">
         45
     </label>
 </div>
@@ -38,3 +45,5 @@
     </li>
     {% endfor %}
 </ul>
+</body>
+</html>

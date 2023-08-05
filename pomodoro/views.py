@@ -11,12 +11,39 @@
 # return HttpResponse("hello")
 import csv
 import datetime
+from io import BytesIO
+import matplotlib.pyplot as plt
 from django.utils import timezone
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, HttpResponseRedirect
 from django.urls import reverse
 from .models import Task, TaskName
+
+
+@login_required
+def charts(request):
+    tasks = Task.objects.filter(user=request.user)
+
+    task_lengths = {}
+
+    for task in tasks:
+        if task.name.name in task_lengths:
+            task_lengths[task.name.name] += task.length
+        else:
+            task_lengths[task.name.name] = task.length
+
+    fig1, ax1 = plt.subplots()
+    ax1.pie(task_lengths.values(),
+            labels=task_lengths.keys(),
+            autopct='%1.1f%%',
+            )
+    buf = BytesIO()
+    plt.savefig(buf, format='png')
+    plt.close(fig1)
+    buf.seek(0)
+    response = HttpResponse(buf, content_type='image/png')
+    return response
 
 
 @login_required
@@ -30,23 +57,30 @@ def index(request):
 
         # If only task name is provided, it is the 'add_task' functionality
         if task_name_str and not task_length_str:
-            existing_task_name = TaskName.objects.filter(user=request.user, name=task_name_str)
+            existing_task_name = TaskName.objects.filter(
+                    user=request.user, name=task_name_str
+                    )
             if not existing_task_name:
                 # If the task name doesn't exist, create it
                 TaskName.objects.create(user=request.user, name=task_name_str)
 
-        # If both task name and length are provided, it is the 'create task' functionality
         elif task_name_str and task_length_str:
             # Get the TaskName instance with the provided name
-            task_name = TaskName.objects.get(user=request.user, name=task_name_str)
+            task_name = TaskName.objects.get(
+                    user=request.user, name=task_name_str
+                    )
 
             # Convert task_length_str to an integer
             task_length = int(task_length_str)
 
             # Create a new task
-            Task.objects.create(user=request.user, name=task_name, length=task_length)
+            Task.objects.create(
+                    user=request.user, name=task_name, length=task_length
+                    )
 
-    return render(request, 'pomodoro/index.html', {'tasks': tasks, 'task_names': task_names})
+    return render(request, 'pomodoro/index.html', {
+        'tasks': tasks, 'task_names': task_names
+        })
 
 
 @login_required
