@@ -10,77 +10,143 @@
 # def index(request):
 # return HttpResponse("hello")
 import csv
+import json
 import datetime
+import base64
 from io import BytesIO
 import matplotlib.pyplot as plt
 from django.utils import timezone
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, HttpResponseRedirect
+
+from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
 from .models import Task, TaskName
+from collections import defaultdict
 
 
 @login_required
 def charts(request):
     tasks = Task.objects.filter(user=request.user)
 
-    task_lengths = {}
+    # Initialize a nested dictionary with defaultdict
+    task_times = defaultdict(lambda: defaultdict(int))
 
     for task in tasks:
-        if task.name.name in task_lengths:
-            task_lengths[task.name.name] += task.length
-        else:
-            task_lengths[task.name.name] = task.length
+        task_hour = task.date.hour
+        task_times[task.name.name][task_hour] += task.length / 60  # convert to hours
 
-    fig1, ax1 = plt.subplots()
-    ax1.pie(task_lengths.values(),
-            labels=task_lengths.keys(),
-            autopct='%1.1f%%',
-            )
+    # Create lists for task names and hours of the day
+    task_names = list(task_times.keys())
+    hours = list(range(24))
+
+    # Create a list of cumulative hours for each task
+    cumulative_hours = [[task_times[task][hour] for hour in hours] for task in task_names]
+
+    # Plot
+    fig, ax = plt.subplots()
+
+    for i, task in enumerate(task_names):
+        ax.plot(hours, cumulative_hours[i], label=task)
+
+    # Formatting
+    ax.set_xlabel('Time of Day')
+    ax.set_ylabel('Cumulative Hours')
+    ax.set_title('Cumulative hours spent on each task by time of day')
+    ax.legend()
+
+    plt.xticks(range(0, 24, 1))
+
     buf = BytesIO()
     plt.savefig(buf, format='png')
-    plt.close(fig1)
+    plt.close(fig)
     buf.seek(0)
-    response = HttpResponse(buf, content_type='image/png')
-    return response
+    image_string = base64.b64encode(buf.getvalue()).decode()
+    # response = HttpResponse(buf, content_type='image/png')
+
+
+    return image_string
+    # return response
+# @login_required
+# def charts(request):
+    # tasks = Task.objects.filter(user=request.user)
+
+    # task_lengths = {}
+
+    # for task in tasks:
+        # if task.name.name in task_lengths:
+            # task_lengths[task.name.name] += task.length
+        # else:
+            # task_lengths[task.name.name] = task.length
+
+    # fig1, ax1 = plt.subplots()
+    # ax1.pie(task_lengths.values(),
+            # labels=task_lengths.keys(),
+            # autopct='%1.1f%%',
+            # )
+    # buf = BytesIO()
+    # plt.savefig(buf, format='png')
+    # plt.close(fig1)
+    # buf.seek(0)
+    # response = HttpResponse(buf, content_type='image/png')
+    # return response
 
 
 @login_required
 def index(request):
     tasks = Task.objects.filter(user=request.user)
     task_names = TaskName.objects.filter(user=request.user)
+    ongoing_task_data = None
+    chart_image = charts(request)
 
     if request.method == "POST":
         task_name_str = request.POST.get('task_name')
+        select_task_name_str = request.POST.get('select_task_name')
         task_length_str = request.POST.get('task_length')
 
-        # If only task name is provided, it is the 'add_task' functionality
-        if task_name_str and not task_length_str:
+        if task_name_str: # if task_name input is not empty
             existing_task_name = TaskName.objects.filter(
                     user=request.user, name=task_name_str
                     )
-            if not existing_task_name:
-                # If the task name doesn't exist, create it
+            if not existing_task_name: # If the task name doesn't exist, create it
                 TaskName.objects.create(user=request.user, name=task_name_str)
 
-        elif task_name_str and task_length_str:
-            # Get the TaskName instance with the provided name
-            task_name = TaskName.objects.get(
-                    user=request.user, name=task_name_str
-                    )
+        else: # if task_name input is empty, then use the selected task_name
+            task_name_str = select_task_name_str
 
-            # Convert task_length_str to an integer
-            task_length = int(task_length_str)
+        # Get the TaskName instance with the provided name
+        task_name = TaskName.objects.get(
+                user=request.user, name=task_name_str
+                )
 
-            # Create a new task
-            Task.objects.create(
-                    user=request.user, name=task_name, length=task_length
-                    )
+        # Convert task_length_str to an integer
+        task_length = int(task_length_str)
+
+        # Create a new task
+        Task.objects.create(
+                user=request.user, name=task_name, length=task_length
+                )
+        last_task = tasks.order_by('-date').first()  # Get the most recent task
+            # If less time has passed than the task length, the task is ongoing
+        ongoing_task = last_task
+        ongoing_task_data = {
+            'date': ongoing_task.date.isoformat(),
+            'name': ongoing_task.name.name,
+            'length': ongoing_task.length,
+        }
+
+    tasks_data = list(Task.objects.filter(user=request.user).values(
+        'name__name', 'length', 'date'))
+    for task in tasks_data:
+        task['date'] = task['date'].isoformat()  # Convert datetime to string
 
     return render(request, 'pomodoro/index.html', {
-        'tasks': tasks, 'task_names': task_names
-        })
+        'tasks': json.dumps(tasks_data),
+        'task_names': task_names,
+        'ongoing_task': json.dumps(ongoing_task_data),
+        'chart_image': chart_image,
+    })
 
 
 @login_required
