@@ -1,9 +1,9 @@
 # FlowTracker
 flow tracker is a pomodoro timer written in Django, with a little bit of javascript and Chart.js to generate some pretty graphs
 based off past work done.
-![UI](https://i.imgur.com/nhYRKNB.png))  
+![UI](https://i.imgur.com/nhYRKNB.png)
 
-![graph]([https://i.imgur.com/aYOjpnt.png)])
+![graph](https://i.imgur.com/aYOjpnt.png)
 
 ## TODO
 notifactions,
