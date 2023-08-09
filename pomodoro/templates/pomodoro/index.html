@@ -6,100 +6,128 @@
         <script src="https://cdn.jsdelivr.net/npm/luxon@2.0.2/build/global/luxon.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.0.0"></script>
         <link rel="stylesheet" href="{% static 'output.css' %}">
-        <script type="text/javascript">
-const ongoingTask = "{{ ongoing_task }}";
-    var ongoingTaskData = JSON.parse('{{ ongoing_task | escapejs }}');
-if (ongoingTaskData) {
-    console.log(ongoingTaskData);
-    const startDate = new Date(ongoingTaskData.date);
-    const taskLengthMinutes = ongoingTaskData.length;
-    const taskName = ongoingTaskData.name;
-    const endDate = new Date(startDate.getTime() + taskLengthMinutes * 60 * 1000); // Add task length (in ms) to the start time
-    var totalDuration = taskLengthMinutes * 60 * 1000;  // Total task duration in milliseconds
-    
-    // Update progress bar value
+        <script>
+            const ongoingTask = "{{ ongoing_task }}";
+            var ongoingTaskData = JSON.parse('{{ ongoing_task | escapejs }}');
+        </script>
+        <script type="text/javascript" src="{% static '/js/timer.js' %}">
+<script type="text/javascript" src="{% static '/js/process_data.js' %}"></script>
+</head>
+<body>
+<div class="flex flex-col w-full lg:flex-row">
+<div class="grid flex-grow h-120 card bg-base-300 rounded-box place-items-center">
+<form method="post">
+{% csrf_token %}
+<input type="text" class="join-item input input-bordered w-full max-w-xs" id="task_name" name="task_name" placeholder="Enter new task name" />
+<br>
+<br>
+<select class="select w-full max-w-xs input-bordered" id="select_task_name" name="select_task_name">
+<option value="">Select task</option>
+{% for task_name in task_names %}<option value="{{ task_name.name }}">{{ task_name.name }}</option>{% endfor %}
+</select>
+<br>
+<br>
+<input type="radio" class="join-item btn" name="task_length" value="15" aria-label="15" />
+<input type="radio" class="join-item btn" name="task_length" value="25" checked aria-label="25" />
+<input type="radio" class="join-item btn" name="task_length" value="45" aria-label="45">
+<input class="btn" type="submit" value="Start" />
+<br>
+<br>
+</form>
+<div id="timer" class="radial-progress " style="--value:00; --size:18rem; --thickness: 5px">00:00</div>
+</div>
+</div>
+<div class="divider"></div>
+<div class="grid flex-grow h-32 card bg-base-300 rounded-box">
+<div>
+<div style="width: 900px; height: 600px;">
+<canvas id="chartToday"></canvas>
+</div>
+</div>
+<div>
+<div style="width: 900px; height: 600px;">
+<canvas id="chartLastWeek"></canvas>
+</div>
+</div>
+<div>
+<div style="width: 900px; height: 600px;">
+<canvas id="chartTotal"></canvas>
+</div>
+</div>
+</div>
+<div class="divider"></div>
+<script>
 
-    var countdown = setInterval(function() {
-        var now = new Date().getTime();
-        var elapsedTime = now - startDate.getTime();  // Time elapsed since the task started
-        var remainingTime = totalDuration - elapsedTime;  // Remaining time in milliseconds
-        var remainingPercentage = (remainingTime / totalDuration) * 100;  // Remaining time as a percentage of total duration
-        document.getElementById("timer").style.setProperty('--value', remainingPercentage.toFixed(0));
-        var distance = endDate - now;
+function chartDataToday(tasks) {
+    const today = luxon.DateTime.local().startOf('day'); // Get the start of the current day
+    const groupedData = {};
+    const labels = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0') + ':00');
 
+    for (const task of tasks) {
+        const taskDate = luxon.DateTime.fromISO(task.date);
 
+        // Check if the task occurred during the current day
+        if (taskDate.hasSame(today, 'day')) {
+            const hour = taskDate.hour;
+            const taskName = task.name__name;
 
-        var hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        var minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-        var seconds = Math.floor((distance % (1000 * 60)) / 1000);
+            if (!groupedData[taskName]) {
+                groupedData[taskName] = Array(24).fill(0);
+            }
 
-        document.getElementById("timer").innerHTML = hours + "h "
-        + minutes + "m " + seconds + "s <br>" + taskName;
-
-        if (distance < 0) {
-            clearInterval(countdown);
-            document.getElementById("timer").innerHTML = "Task has ended";
+            groupedData[taskName][hour] += task.length / 60;  // convert to hours
         }
-    }, 1000);
-} else {
-    console.log('There is no ongoing task');
+    }
+
+    const datasets = Object.entries(groupedData).map(([label, data], i, arr) => ({
+        label,
+        data,
+        borderColor: pickColor(i, arr.length),
+        fill: false
+    }));
+
+    return { labels, datasets };
 }
 
-        </script>
-    </head>
-    <body>
-        <div class="flex flex-col w-full lg:flex-row">
-            <div class="grid flex-grow h-120 card bg-base-300 rounded-box place-items-center">
-                <form method="post">
-                    {% csrf_token %}
-                    <input type="text"
-                           class="join-item input input-bordered w-full max-w-xs"
-                           id="task_name"
-                           name="task_name"
-                           placeholder="Enter new task name" />
-                    <br>
-                    <br>
-                    <select class="select w-full max-w-xs input-bordered"
-                            id="select_task_name"
-                            name="select_task_name">
-                        <option value="">Select task</option>
-                        {% for task_name in task_names %}<option value="{{ task_name.name }}">{{ task_name.name }}</option>{% endfor %}
-                    </select>
-                    <br>
-                    <br>
-                    <input type="radio"
-                           class="join-item btn"
-                           name="task_length"
-                           value="15"
-                           aria-label="15" />
-                    <input type="radio"
-                           class="join-item btn"
-                           name="task_length"
-                           value="25"
-                           checked
-                           aria-label="25" />
-                    <input type="radio"
-                           class="join-item btn"
-                           name="task_length"
-                           value="45"
-                           aria-label="45">
-                    <input class="btn" type="submit" value="Start" />
-                    <br>
-                    <br>
-                </form>
-                <div id="timer"
-                     class="radial-progress "
-                     style="--value:00;
-                            --size:18rem;
-                            --thickness: 5px">00:00</div>
-            </div>
-        </div>
-        {% comment %}<img src="data:image/png;base64,{{ chart_image }}">{% endcomment %}
-        <div style="width:800px; height:400px;">
-            <canvas id="myChart"></canvas>
-        </div>
-        <script>
-function processData(tasks) {
+function chartDataLastWeek(tasks) {
+    const oneWeekAgo = luxon.DateTime.local().startOf('day').minus({ weeks: 1 }); // Get the date of one week ago
+    const now = luxon.DateTime.local().startOf('day'); // Get the start of the current day
+
+    const labels = [];
+    for (let i = 0; i < 7; i++) {
+        labels.push(oneWeekAgo.plus({ days: i }).toFormat('EEEE')); 
+    }
+
+    const groupedData = {};
+    for (const task of tasks) {
+        const taskDate = luxon.DateTime.fromISO(task.date).startOf('day');
+
+        // Check if the task occurred during the last week
+        if (taskDate >= oneWeekAgo && taskDate <= now) {
+            const day = taskDate.toFormat('EEEE');
+            const taskName = task.name__name;
+
+            if (!groupedData[taskName]) {
+                groupedData[taskName] = Array(7).fill(0);
+            }
+
+            const dayIndex = labels.indexOf(day);
+            if (dayIndex !== -1) {
+                groupedData[taskName][dayIndex] += task.length / 60;  // convert to hours
+            }
+        }
+    }
+
+    const datasets = Object.entries(groupedData).map(([label, data], i, arr) => ({
+        label,
+        data,
+        borderColor: pickColor(i, arr.length),
+        fill: false
+    }));
+
+    return { labels, datasets };
+}
+function chartDataTotal(tasks) {
     const groupedData = {};
     const labels = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0') + ':00');
 
@@ -123,7 +151,6 @@ function processData(tasks) {
 
     return { labels, datasets };
 }
-
 function pickColor(i, total) {
     const hue = 170 + Math.round((i / total) * (320 - 170));
     return `hsl(${hue}, 100%, 50%)`;
@@ -132,15 +159,21 @@ function pickColor(i, total) {
 
 let tasks = JSON.parse('{{ tasks | escapejs | safe }}'); // Parse the JSON string to a JavaScript object
 console.log(tasks);
-const { labels, datasets } = processData(tasks);
-var ctx = document.getElementById('myChart').getContext('2d');
-const myChart = new Chart(ctx, {
+var { labels, datasets } = chartDataTotal(tasks);
+var ctx = document.getElementById('chartTotal').getContext('2d');
+var myChart = new Chart(ctx, {
         type: 'line',
         data: {
             labels: labels,
             datasets: datasets
         },
         options: {
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Total:'
+                }
+            },
             scales: {
                 x: {
                     title: {
@@ -158,6 +191,69 @@ const myChart = new Chart(ctx, {
         }
     });
 
-        </script>
-    </body>
+var { labels, datasets } = chartDataToday(tasks);
+var ctx = document.getElementById('chartToday').getContext('2d');
+var myChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: datasets
+        },
+        options: {
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Today:'
+                }
+            },
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Time of Day'
+                    }
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: 'Cumulative Hours'
+                    }
+                }
+            }
+        }
+    });
+
+var { labels, datasets } = chartDataLastWeek(tasks);
+var ctx = document.getElementById('chartLastWeek').getContext('2d');
+var myChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: datasets
+        },
+        options: {
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Past Week:'
+                }
+            },
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Day'
+                    }
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: 'Cumulative Hours'
+                    }
+                }
+            }
+        }
+    });
+</script>
+</body>
 </html>

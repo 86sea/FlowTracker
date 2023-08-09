@@ -25,8 +25,12 @@ SECRET_KEY = 'django-insecure-0r7*%h(0$$8fj1tb$1!f9k9@4x*a+bv+rp%47^(z9glv*_n(_^
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
 
+ALLOWED_HOSTS = ['192.168.1.16', 'localhost', '127.0.0.1']
+
+LOGIN_URL = 'login'
+
+LOGIN_REDIRECT_URL = 'pomodoro/'
 
 # Application definition
 

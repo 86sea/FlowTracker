@@ -15,15 +15,18 @@ import datetime
 import base64
 from io import BytesIO
 import matplotlib.pyplot as plt
+from collections import defaultdict
+
 from django.utils import timezone
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, HttpResponseRedirect
-
+from django.contrib.auth.forms import UserCreationForm
+from django.contrib import messages
 from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
+
 from .models import Task, TaskName
-from collections import defaultdict
 
 
 @login_required
@@ -65,33 +68,45 @@ def charts(request):
     image_string = base64.b64encode(buf.getvalue()).decode()
     # response = HttpResponse(buf, content_type='image/png')
 
-
     return image_string
     # return response
-# @login_required
-# def charts(request):
-    # tasks = Task.objects.filter(user=request.user)
 
-    # task_lengths = {}
 
-    # for task in tasks:
-        # if task.name.name in task_lengths:
-            # task_lengths[task.name.name] += task.length
-        # else:
-            # task_lengths[task.name.name] = task.length
+@login_required
+def charts(request):
+    tasks = Task.objects.filter(user=request.user)
 
-    # fig1, ax1 = plt.subplots()
-    # ax1.pie(task_lengths.values(),
-            # labels=task_lengths.keys(),
-            # autopct='%1.1f%%',
-            # )
-    # buf = BytesIO()
-    # plt.savefig(buf, format='png')
-    # plt.close(fig1)
-    # buf.seek(0)
-    # response = HttpResponse(buf, content_type='image/png')
-    # return response
+    task_lengths = {}
 
+    for task in tasks:
+        if task.name.name in task_lengths:
+            task_lengths[task.name.name] += task.length
+        else:
+            task_lengths[task.name.name] = task.length
+
+    fig1, ax1 = plt.subplots()
+    ax1.pie(task_lengths.values(),
+            labels=task_lengths.keys(),
+            autopct='%1.1f%%',
+            )
+    buf = BytesIO()
+    plt.savefig(buf, format='png')
+    plt.close(fig1)
+    buf.seek(0)
+    response = HttpResponse(buf, content_type='image/png')
+    return response
+
+def register(request):
+    if request.method == 'POST':
+        form = UserCreationForm(request.POST)
+        if form.is_valid():
+            form.save()
+            username = form.cleaned_data.get('username')
+            messages.success(request, f'Account created for {username}! You are now able to log in')
+            return redirect('login')
+    else:
+        form = UserCreationForm()
+    return render(request, 'pomodoro/register.html', {'form': form})
 
 @login_required
 def index(request):
