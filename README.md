@@ -3,8 +3,7 @@ flow tracker is a pomodoro timer written in Django, with a little bit of javascr
 based off past work done.
 ![UI](https://i.imgur.com/nhYRKNB.png))  
 
-![graph]([http://url/to/img.png](https://i.imgur.com/aYOjpnt.png
-))
+![graph]([http://url/to/img.png](https://i.imgur.com/aYOjpnt.png)
 
 ## TODO
 notifactions,
