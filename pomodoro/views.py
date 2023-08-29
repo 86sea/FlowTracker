@@ -16,6 +16,14 @@ import base64
 from io import BytesIO
 import matplotlib.pyplot as plt
 from collections import defaultdict
+from datetime import date
+import os.path
+
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 
 from django.utils import timezone
 from django.shortcuts import render, redirect
@@ -96,18 +104,59 @@ def charts(request):
     response = HttpResponse(buf, content_type='image/png')
     return response
 
+
 def register(request):
     if request.method == 'POST':
         form = UserCreationForm(request.POST)
         if form.is_valid():
             form.save()
             username = form.cleaned_data.get('username')
-            messages.success(request, f'Account created for {username}! You are now able to log in')
+            messages.success(
+                    request,
+                    f'Account created for {username}! You are now able to log in')
             return redirect('login')
     else:
         form = UserCreationForm()
     return render(request, 'pomodoro/register.html', {'form': form})
 
+
+def calendar():
+    SCOPES = ['https://www.googleapis.com/auth/calendar.readonly', 'https://www.googleapis.com/auth/tasks.readonly']
+    creds = None
+    # The file token.json stores the user's access and refresh tokens, and is
+    # created automatically when the authorization flow completes for the first
+    # time.
+    if os.path.exists('token.json'):
+        creds = Credentials.from_authorized_user_file('token.json', SCOPES)
+    # If there are no (valid) credentials available, let the user log in.
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file(
+                'credentials.json', SCOPES)
+            creds = flow.run_local_server(port=0)
+        # Save the credentials for the next run
+        with open('token.json', 'w') as token:
+            token.write(creds.to_json())
+
+    try:
+        service = build('calendar', 'v3', credentials=creds)
+
+        # Call the Calendar API
+        now = datetime.datetime.utcnow().isoformat() + 'Z'  # 'Z' indicates UTC time
+        print('Getting the upcoming 10 events')
+        events_result = service.events().list(calendarId='primary', timeMin=now,
+                                              maxResults=10, singleEvents=True,
+                                              orderBy='startTime').execute()
+        events = events_result.get('items', [])
+
+
+        # Prints the start and name of the next 10 events
+        event_data = [{'summary': event['summary'], 'start': event['start']['dateTime']} for event in events]
+        return event_data
+    except HttpError as error:
+        print('An error occurred: %s' % error)
 @login_required
 def index(request):
     tasks = Task.objects.filter(user=request.user)
@@ -120,14 +169,17 @@ def index(request):
         select_task_name_str = request.POST.get('select_task_name')
         task_length_str = request.POST.get('task_length')
 
-        if task_name_str: # if task_name input is not empty
+        # if task_name input is not empty
+        if task_name_str:
             existing_task_name = TaskName.objects.filter(
                     user=request.user, name=task_name_str
                     )
-            if not existing_task_name: # If the task name doesn't exist, create it
+            # If the task name doesn't exist, create it
+            if not existing_task_name:
                 TaskName.objects.create(user=request.user, name=task_name_str)
 
-        else: # if task_name input is empty, then use the selected task_name
+        # if task_name input is empty, then use the selected task_name
+        else:
             task_name_str = select_task_name_str
 
         # Get the TaskName instance with the provided name
@@ -143,7 +195,7 @@ def index(request):
                 user=request.user, name=task_name, length=task_length
                 )
         last_task = tasks.order_by('-date').first()  # Get the most recent task
-            # If less time has passed than the task length, the task is ongoing
+        # If less time has passed than the task length, the task is ongoing
         ongoing_task = last_task
         ongoing_task_data = {
             'date': ongoing_task.date.isoformat(),
@@ -156,12 +208,22 @@ def index(request):
     for task in tasks_data:
         task['date'] = task['date'].isoformat()  # Convert datetime to string
 
+    today_tasks_count = Task.objects.filter(date__date=date.today()).count()
+    range_20 = range(20)
+
+    calendar_events = calendar()
+    print("events: ", calendar_events)
     return render(request, 'pomodoro/index.html', {
         'tasks': json.dumps(tasks_data),
         'task_names': task_names,
         'ongoing_task': json.dumps(ongoing_task_data),
         'chart_image': chart_image,
+        'today_tasks_count': today_tasks_count,
+        'range_20': range_20,
+        'calendar_events': calendar_events,
     })
+
+
 
 
 @login_required
