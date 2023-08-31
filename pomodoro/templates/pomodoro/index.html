@@ -45,10 +45,11 @@
 </select>
 <br>
 <br>
+<input type="radio" class="join-item btn" name="task_length" value="1" aria-label="1" />
 <input type="radio" class="join-item btn" name="task_length" value="15" aria-label="15" />
 <input type="radio" class="join-item btn" name="task_length" value="25" checked aria-label="25" />
 <input type="radio" class="join-item btn" name="task_length" value="45" aria-label="45">
-<input class="btn" type="submit" value="Start" />
+<input class="btn start" type="submit" value="Start" />
 <br>
 <br>
 </form>
@@ -194,12 +195,22 @@ function pickColor(i, total) {
 }
 
 
+document.addEventListener('DOMContentLoaded', function () {
+    if (!Notification) {
+        console.log('Desktop notifications not available in your browser.');
+        return;
+    }
+
+    if (Notification.permission !== 'granted') {
+        Notification.requestPermission();
+    }
+});
 let tasks = JSON.parse('{{ tasks | escapejs | safe }}'); // Parse the JSON string to a JavaScript object
 const todayTasksCount = {{ today_tasks_count }};
 const calendarTasks = JSON.parse('{{ calendar_events | escapejs | safe }}');
 console.log(todayTasksCount)
 console.log(calendarTasks)
-document.querySelector('.btn').addEventListener('click', function() {
+document.querySelector('.start').addEventListener('click', function() {
     const outlines = document.querySelectorAll('img[src$="fire_emoji_outline.png"]');
     if (outlines.length) {
         outlines[0].src = "{% static 'fire_emoji.png' %}";

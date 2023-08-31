@@ -27,6 +27,11 @@ if (ongoingTaskData) {
         if (distance < 0) {
             clearInterval(countdown);
             document.getElementById("timer").innerHTML = "Task has ended";
+        if (Notification.permission === "granted") {
+                new Notification('Timer Ended!', {
+                    body: 'Your task "' + taskName + '" has ended!',
+                });
+            }
         }
     }, 1000);
 } else {
