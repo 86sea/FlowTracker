@@ -120,43 +120,43 @@ def register(request):
     return render(request, 'pomodoro/register.html', {'form': form})
 
 
-def calendar():
-    SCOPES = ['https://www.googleapis.com/auth/calendar.readonly', 'https://www.googleapis.com/auth/tasks.readonly']
-    creds = None
-    # The file token.json stores the user's access and refresh tokens, and is
-    # created automatically when the authorization flow completes for the first
-    # time.
-    if os.path.exists('token.json'):
-        creds = Credentials.from_authorized_user_file('token.json', SCOPES)
-    # If there are no (valid) credentials available, let the user log in.
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file(
-                'credentials.json', SCOPES)
-            creds = flow.run_local_server(port=0)
-        # Save the credentials for the next run
-        with open('token.json', 'w') as token:
-            token.write(creds.to_json())
+# def calendar():
+    # SCOPES = ['https://www.googleapis.com/auth/calendar.readonly', 'https://www.googleapis.com/auth/tasks.readonly']
+    # creds = None
+    # # The file token.json stores the user's access and refresh tokens, and is
+    # # created automatically when the authorization flow completes for the first
+    # # time.
+    # if os.path.exists('token.json'):
+        # creds = Credentials.from_authorized_user_file('token.json', SCOPES)
+    # # If there are no (valid) credentials available, let the user log in.
+    # if not creds or not creds.valid:
+        # if creds and creds.expired and creds.refresh_token:
+            # creds.refresh(Request())
+        # else:
+            # flow = InstalledAppFlow.from_client_secrets_file(
+                # 'credentials.json', SCOPES)
+            # creds = flow.run_local_server(port=0)
+        # # Save the credentials for the next run
+        # with open('token.json', 'w') as token:
+            # token.write(creds.to_json())
 
-    try:
-        service = build('calendar', 'v3', credentials=creds)
+    # try:
+        # service = build('calendar', 'v3', credentials=creds)
 
-        # Call the Calendar API
-        now = datetime.datetime.utcnow().isoformat() + 'Z'  # 'Z' indicates UTC time
-        print('Getting the upcoming 10 events')
-        events_result = service.events().list(calendarId='primary', timeMin=now,
-                                              maxResults=10, singleEvents=True,
-                                              orderBy='startTime').execute()
-        events = events_result.get('items', [])
+        # # Call the Calendar API
+        # now = datetime.datetime.utcnow().isoformat() + 'Z'  # 'Z' indicates UTC time
+        # print('Getting the upcoming 10 events')
+        # events_result = service.events().list(calendarId='primary', timeMin=now,
+                                              # maxResults=10, singleEvents=True,
+                                              # orderBy='startTime').execute()
+        # events = events_result.get('items', [])
 
 
-        # Prints the start and name of the next 10 events
-        event_data = [{'summary': event['summary'], 'start': event['start']['dateTime']} for event in events]
-        return event_data
-    except HttpError as error:
-        print('An error occurred: %s' % error)
+        # # Prints the start and name of the next 10 events
+        # event_data = [{'summary': event['summary'], 'start': event['start']['dateTime']} for event in events]
+        # return event_data
+    # except HttpError as error:
+        # print('An error occurred: %s' % error)
 @login_required
 def index(request):
     tasks = Task.objects.filter(user=request.user)
@@ -211,8 +211,8 @@ def index(request):
     today_tasks_count = Task.objects.filter(date__date=date.today()).count()
     range_20 = range(20)
 
-    calendar_events = calendar()
-    print("events: ", calendar_events)
+    # calendar_events = calendar()
+    # print("events: ", calendar_events)
     return render(request, 'pomodoro/index.html', {
         'tasks': json.dumps(tasks_data),
         'task_names': task_names,
@@ -220,7 +220,7 @@ def index(request):
         'chart_image': chart_image,
         'today_tasks_count': today_tasks_count,
         'range_20': range_20,
-        'calendar_events': calendar_events,
+        # 'calendar_events': calendar_events,
     })
 
 
